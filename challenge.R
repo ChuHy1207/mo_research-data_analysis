@@ -1,0 +1,57 @@
+# Import library
+library(readxl) # to read excel files
+library(dplyr) # to carry out data wrangling functions
+library(magrittr) # to write pipes (denoted as %>%)
+library(ggplot2) # to draw graphs
+library(stringr) # to wrangle strings
+library(tidyr)
+library(RColorBrewer) # for color palette
+library(gganimate)
+
+# Import data
+data_2014_2017 <- read_excel("C:/Users/admin/Desktop/MO research/mo_research-data_analysis/data_2014_2017.xls", sheet = "transpose_data")
+data_2017_2019 <- read_excel("C:/Users/admin/Desktop/MO research/mo_research-data_analysis/data_2017_2019.xlsx", sheet = "Final clean data")
+
+# Select, filter:
+data_2014_2017 <- data_2014_2017 %>%
+  select("Categories", `3_all_students`, `5_instructors`) %>%
+  rename("academic_year" = "Categories",
+         "all_students" = `3_all_students`,
+         "all_instructors" = `5_instructors`) %>%
+  mutate(ratio = all_students / all_instructors)
+
+data_2017_2019 <- data_2017_2019 %>%
+  filter(school_type == "total") %>%
+  mutate(all_students = `4_all_undergraduate_students` + `5_all_graduate_students`) %>%
+  select("academic_year", "all_students", `7.3_Instructor`) %>%
+  rename("all_instructors" = `7.3_Instructor`) %>%
+  mutate(ratio = all_students / all_instructors)
+data_2017_2019$academic_year <- case_when(data_2017_2019$academic_year == "2017_2018" ~ "2017-2018",
+                                          data_2017_2019$academic_year == "2018_2019" ~ "2018-2019")
+
+data_2014_2019 <- dplyr::bind_rows(data_2014_2017, data_2017_2019)
+
+data_2014_2019_all <- pivot_longer(data_2014_2019, 
+                                   !academic_year, 
+                                   names_to = "Number", 
+                                   values_to = "values")
+
+data_2014_2019_ratio <- data_2014_2019[,c(1,4)] 
+data_2014_2019_ratio %>%
+  ggplot(aes(x = academic_year, y = ratio, group = 1)) +
+  geom_line(size = 1) +
+  geom_point(size = 1) +
+  theme_classic() +
+  labs(title = "STUDENT - INSTRUCTOR RATIO from 2014 to 2019",
+       x = "Academic year",
+       y = "Student/Instructor ratio") + 
+  theme(plot.title = element_text(face = "bold", color = "black", size = 15), # Adjust plot title 
+        panel.background = element_rect(fill = "Lightcyan2"), # Adjust panel color
+        plot.background = element_rect(fill = "White"), # Adjust plot color
+        axis.title.x = element_text(color = "darkseagreen4", face = "bold", size = 12),  # x Title with grey color and bold, italic face 
+        axis.title.y = element_text(color = "royalblue4", face = "bold", size = 12), # y Title with dark green color and bold, italic face
+        axis.text.x = element_text(angle = 45, vjust = 0.65, color = "darkseagreen4", face = "bold"), # Adjust the angle, color, face of the x text
+        axis.text.y = element_text(face = "bold", color = "royalblue4"), # Adjust face, color of y text
+        axis.line.x = element_line(color = "Thistle4", size = 1), # Adjust x axis line
+        axis.line.y = element_line(color = "Salmon4", size = 1)) +
+  transition_reveal(readr::parse_number(academic_year))
